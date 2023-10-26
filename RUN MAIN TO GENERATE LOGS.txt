@@ -1,0 +1,5 @@
+Sorry for the caps. I figured I shouldn't send a sketchy zip of some logs, so just run main for a few seconds
+and there should be more than enough logging to verify most functionality generated in some folders. They're 
+kind of repetetive, but I hope you can parse through them well enough. 
+
+Thank you
