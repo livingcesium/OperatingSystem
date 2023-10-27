@@ -25,5 +25,13 @@ public class OS {
     public static int write(int id, byte[] data) throws IOException { return kernel.write(id, data); } 
     public static byte[] read(int id, int size) throws IOException { return kernel.read(id, size); }
     public static String getFileSystemLog() { return kernel.getFileSystemLog(); }
+    public static int getPid() { return kernel.getPid(); }
+    public static int getPidByName(String name) { return kernel.getPidByName(name); }
+    public static void sendMessage(KernelMessage msg){
+        kernel.sendMessage(msg);
+    }
+    public static KernelMessage awaitMessage(){
+        return kernel.awaitMessage();
+    }
     
 }

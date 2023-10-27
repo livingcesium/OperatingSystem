@@ -1,6 +1,8 @@
 import java.util.Arrays;
+import java.util.LinkedList;
 
 public class KernelandProcess {
+    private String name;
     private static int nextpid = 0;
     private final int pid;
     private boolean started;
@@ -10,18 +12,21 @@ public class KernelandProcess {
     private int demoteFuse = 5;
     public static final int MAXDEVICES = 10;
     private final int[] deviceIds = new int[MAXDEVICES];
+    private final LinkedList<KernelMessage> kernelMessages = new LinkedList<>();
     
     KernelandProcess(UserlandProcess up){
         Arrays.fill(deviceIds, -1);
         pid = nextpid++;
         thread = new Thread(up, String.format("[Kerneland] Process, PID%d", pid));
         priority = Priority.INTERACTIVE;
+        name = up.getClass().getSimpleName();
     }
     KernelandProcess(UserlandProcess up, Priority p){
         Arrays.fill(deviceIds, -1);
         pid = nextpid++;
         thread = new Thread(up, String.format("[Kerneland] Process, PID%d", pid));
         priority = p;
+        name = up.getClass().getSimpleName();
     }
     
     public void stop(){
@@ -65,14 +70,28 @@ public class KernelandProcess {
         }
    }
    
+   public void receiveMessage(KernelMessage msg){
+         synchronized(kernelMessages){
+              kernelMessages.add(msg);
+         }
+   }
+   public boolean hasMessage(){
+         synchronized(kernelMessages){
+              return !kernelMessages.isEmpty();
+         }
+   }
+    public KernelMessage takeMessage(){
+            synchronized(kernelMessages){
+                  return kernelMessages.removeFirst();
+            }
+    }
+   public String getName(){ return name; }
    public int getDeviceId(int i){ return deviceIds[i]; }
     public void setDeviceId(int i, int id){ deviceIds[i] = id; }
    public int getPid(){ return pid; }
-    
-    
     public Priority getPriority(){ synchronized (priorityLock) {return priority;} }
     public String toString(){
           return String.format("PID%d", pid);
     }
-   
+    
 }

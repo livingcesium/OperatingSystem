@@ -76,7 +76,7 @@ public class FileTester extends UserlandProcess{
         
         RandomAccessFile file = new RandomAccessFile(logFile, "rw");
         
-        file.seek(file.length()); // Go to end of file to append
+        file.setLength(0); // Clear file
         file.write(String.format("///////////////// %s /////////////////\n", LocalDateTime.now()).getBytes());
         file.write(OS.getFileSystemLog().getBytes());
         file.close();

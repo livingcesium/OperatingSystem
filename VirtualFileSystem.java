@@ -176,6 +176,7 @@ public class VirtualFileSystem implements Device {
                 int innerId;
                 device.close(innerId = deviceIds.getId(i));
                 logger.logOperation(String.format("Closing first occurrence of device '%s'. Found with innerID %d, at id %d", s, innerId, i));
+                logger.updateDevicesTable();
                 break;
             }
         }

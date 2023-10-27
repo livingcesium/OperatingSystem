@@ -1,5 +1,6 @@
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.HashMap;
 
 public class Kernel implements Device{
     private static Scheduler scheduler;
@@ -96,7 +97,22 @@ public class Kernel implements Device{
         return VFS.write(deviceId, data);
     }
     
+    public int getPid(){
+        return scheduler.getCurrentlyRunning().getPid();
+    }
+    
+    public int getPidByName(String name){
+        return scheduler.getPidByName(name);
+    }
+    public void sendMessage(KernelMessage msg){
+        scheduler.sendMessage(msg);
+    }
+    public KernelMessage awaitMessage(){
+        return scheduler.awaitMessage();
+    }
+    
     public String getFileSystemLog(){
         return VFS.getLog();
     }
+    
 }

@@ -42,7 +42,8 @@ public class Scheduler {
     private final List<KernelandProcess> realTimes;
     private final List<KernelandProcess> interactives;
     private final List<KernelandProcess> backgrounds;
-    
+    private final Map<Integer, KernelandProcess> messageWaiters;
+    private Map<Integer, KernelandProcess> processes;
     
     private Timer timer;
     private KernelandProcess currentProcess;
@@ -56,7 +57,9 @@ public class Scheduler {
         class ProcessSwitcher extends TimerTask  {
             public void run() {
                 try{
-                    switchProcess();
+                    synchronized (currentProcessLock){
+                        switchProcess();
+                    }
                 } catch (Exception ignored){
                     if(Debug.verbose)
                         System.out.println("!> No processes to switch to, lets try next time");
@@ -69,14 +72,18 @@ public class Scheduler {
         realTimes = Collections.synchronizedList(new LinkedList<KernelandProcess>());
         interactives = Collections.synchronizedList(new LinkedList<KernelandProcess>());
         backgrounds = Collections.synchronizedList(new LinkedList<KernelandProcess>());
+        processes = Collections.synchronizedMap(new HashMap<Integer, KernelandProcess>());
+        messageWaiters = Collections.synchronizedMap(new HashMap<Integer, KernelandProcess>());
     }
     
     public int createProcess(UserlandProcess up){
         KernelandProcess kernelProcess = new KernelandProcess(up);
         addToQueue(kernelProcess, false);
-        
-        if(currentProcess == null)
-            switchProcess();
+        processes.put(kernelProcess.getPid(), kernelProcess);
+        synchronized (currentProcessLock) {
+            if (currentProcess == null)
+                switchProcess();
+        }
         
         return kernelProcess.getPid();
     }
@@ -84,13 +91,16 @@ public class Scheduler {
     public int createProcess(UserlandProcess up, Priority priority){
         KernelandProcess kernelProcess = new KernelandProcess(up, priority);
         addToQueue(kernelProcess, false);
+        processes.put(kernelProcess.getPid(), kernelProcess);
         
-        if(currentProcess == null)
-            switchProcess();
-        
+        synchronized (currentProcessLock) {
+            if (currentProcess == null)
+                switchProcess();
+        }
         return kernelProcess.getPid();
     }
     
+    // Should be ran with the lock on currentProcess
     public void switchProcess(){
 
         handleSleepers();
@@ -98,9 +108,9 @@ public class Scheduler {
         if (currentProcess != null) {
             pauseExecution();
         }
-        synchronized (currentProcessLock) {
-            runNextProcess(); // May not run anything if there are no processes to run
-        }
+        
+        runNextProcess(); // May not run anything if there are no processes to run
+        
     }
 
     private void handleSleepers(){
@@ -128,7 +138,7 @@ public class Scheduler {
 
     private void pauseExecution(){
         currentProcess.burnFuse();
-
+        
         if(!currentProcess.isDone()) { // adds unfinished or demoted processes back to the right queue
             addToQueue(currentProcess, false);
         }
@@ -141,7 +151,7 @@ public class Scheduler {
         } catch (IOException ex) { 
             throw new RuntimeException(String.format("Process PID%d could not close all devices, got exception \n\n%s", currentProcess.getPid(), ex)); 
         }
-        
+        processes.remove(currentProcess.getPid());
         currentProcess = null;
     }
 
@@ -155,7 +165,7 @@ public class Scheduler {
             beheadQueue(currentProcess.getPriority());
             currentProcess.run();
 
-        } catch (UnsupportedOperationException noProcessesFound) {
+        } catch (ProcessNotFoundException ex) {
             if(Debug.flag)
                 System.out.printf("!> No processes to switch to, lets try next time \t realtimes:%s interactives:%s backgrounds:%s%n", realTimes, interactives, backgrounds);
         }
@@ -164,9 +174,12 @@ public class Scheduler {
     public void sleep(int milliseconds){
         double timeToFinish = Clock.systemUTC().millis() + milliseconds;
         
-        KernelandProcess temp = currentProcess;
-        currentProcess = null;
-        switchProcess();
+        KernelandProcess temp;
+        synchronized (currentProcessLock) {
+            temp = currentProcess;
+            currentProcess = null;
+            switchProcess();
+        }
         
         sleepingProcesses.add(new SleepingProcess(temp, timeToFinish));
         
@@ -195,7 +208,6 @@ public class Scheduler {
                 output.add(0, process);
             else
                 output.add(process);
-
             if(Debug.flag)
                 System.out.printf("!> Process PID%d added to %s\t%s%n", process.getPid(), process.getPriority(), output);
         }
@@ -218,7 +230,7 @@ public class Scheduler {
         
         synchronized (output) {
             if(output.isEmpty())
-                throw new UnsupportedOperationException("No processes to behead");
+                throw new ProcessNotFoundException("No processes to behead");
             output.remove(0);
             if(Debug.flag)
                 System.out.printf("!> Process PID%d removed from %s\t%s%n", currentProcess.getPid(), currentProcess.getPriority(), output);
@@ -254,7 +266,7 @@ public class Scheduler {
         else if(!backgrounds.isEmpty())
             queue = backgrounds;
         else
-            throw new UnsupportedOperationException("No processes to run");
+            throw new ProcessNotFoundException("No processes to run");
         
         
         synchronized (queue){
@@ -265,14 +277,78 @@ public class Scheduler {
         
     }
     
+    public void sendMessage(KernelMessage msg){
+        int senderPid = getCurrentlyRunning().getPid();
+        int receiverPid = msg.getReceiverPid();
+        if(!processes.containsKey(receiverPid))
+            throw new ProcessNotFoundException(String.format("No process with PID%d to receive message", receiverPid));
+        
+        KernelandProcess receiver = processes.get(receiverPid);
+        receiver.receiveMessage(new KernelMessage(msg, senderPid));
+        
+        if(messageWaiters.containsKey(receiverPid)){
+            messageWaiters.remove(receiverPid);
+            addToQueue(receiver, true);
+        }
+    }
+    
+    public KernelMessage awaitMessage(){
+        KernelandProcess temp;
+        synchronized (currentProcessLock) {
+            if (currentProcess.hasMessage()) {
+                return currentProcess.takeMessage();
+            }
+
+            temp = currentProcess;
+            currentProcess = null;
+            switchProcess();
+        }
+        messageWaiters.put(temp.getPid(), temp);
+        temp.stop();
+        
+        return temp.takeMessage();
+    }
+    
+    public int getPid(){
+        synchronized (currentProcessLock) {
+            return currentProcess.getPid();
+        }
+    }
+    public int getPidByName(String name){
+        KernelandProcess sought;
+        if((sought = getProcess(name)) == null)
+            throw new ProcessNotFoundException(String.format("No process with name %s", name));
+        else
+            return sought.getPid();
+    }
+    
+    private KernelandProcess getProcess(String name){
+        for(Map.Entry<Integer, KernelandProcess> entry : processes.entrySet()){
+            if(entry.getValue().getName().equals(name))
+                return entry.getValue();
+        }
+        
+        return null;
+    }
+    
     public KernelandProcess getCurrentlyRunning(){
-        return currentProcess;
+        synchronized (currentProcessLock) {
+            return currentProcess;
+        }
     }
     
     public String reportCurrentProcess(){
-        if(currentProcess == null)
-            return "[No process running]";
-        else
-            return String.format("Process PID%d", currentProcess.getPid());
+        synchronized (currentProcessLock) {
+            if (currentProcess == null)
+                return "[No process running]";
+            else
+                return String.format("Process PID%d", currentProcess.getPid());
+        }
+    }
+    
+    public static class ProcessNotFoundException extends RuntimeException{
+        public ProcessNotFoundException(String message){
+            super(message);
+        }
     }
 }
