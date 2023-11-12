@@ -107,6 +107,7 @@ public class Scheduler {
         
         if (currentProcess != null) {
             pauseExecution();
+            currentProcess.resetTLB();
         }
         
         runNextProcess(); // May not run anything if there are no processes to run
@@ -141,6 +142,13 @@ public class Scheduler {
         
         if(!currentProcess.isDone()) { // adds unfinished or demoted processes back to the right queue
             addToQueue(currentProcess, false);
+        } else {
+            // Free memory if it was allocated, throw exception if this somehow fails
+            int[] virtualToPhysicalPage = currentProcess.getVirtualToPhysicalPage();
+            for (int physicalPage : virtualToPhysicalPage) {
+                if (physicalPage != -1 && !kernel.freeMemory(physicalPage, 1))
+                    throw new RuntimeException("Failed to free memory while killing process %s".formatted(currentProcess));
+            }
         }
         currentProcess.stop();
         if(Debug.flag)

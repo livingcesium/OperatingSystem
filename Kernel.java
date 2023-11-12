@@ -1,11 +1,11 @@
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.util.HashMap;
 
 public class Kernel implements Device{
     private static Scheduler scheduler;
     private static boolean exists = false;
     private VirtualFileSystem VFS;
+    private boolean[] freeMemory = new boolean[UserlandProcess.memorySize];
     public Kernel(){
         if(exists)
             throw new RuntimeException("Kernel is a singleton");    
@@ -113,6 +113,62 @@ public class Kernel implements Device{
     
     public String getFileSystemLog(){
         return VFS.getLog();
+    }
+
+    public void getMapping(int pageNumber){
+        KernelandProcess process = scheduler.getCurrentlyRunning();
+        process.getMapping(pageNumber);
+    }
+
+    public int allocateMemory(int size){
+        KernelandProcess process = scheduler.getCurrentlyRunning();
+        int[] virtualToPhysicalPage = process.getVirtualToPhysicalPage();
+        int virtualPageNumber;
+        for (int i = 0; i < freeMemory.length; i++) {
+            if(hasSpace(i, size)){
+                for (int j = i; j < i + size; j++) {
+                    UserlandProcess.memory[j] = 0;
+                    freeMemory[j] = true;
+                }
+                // Add physical page to process' mapping
+                for (virtualPageNumber = 0; virtualPageNumber < virtualToPhysicalPage.length; virtualPageNumber++) {
+                    if(virtualToPhysicalPage[virtualPageNumber] == -1){
+                        virtualToPhysicalPage[virtualPageNumber] = i;
+                        break;
+                    }
+                }
+                return virtualPageNumber;
+            }
+        }
+        return -1; // Fail if no empty space found
+    }
+
+    public boolean freeMemory(int virtualPageNumber, int size){
+        KernelandProcess process = scheduler.getCurrentlyRunning();
+        if(process.toPhysicalPage(virtualPageNumber) == -1)
+            return false;
+        for (int i = virtualPageNumber; i < virtualPageNumber + size; i++) {
+            freeMemory[process.toPhysicalPage(i)] = false;
+            process.removePage(i);
+        }
+        return true;
+    }
+
+    // Returns true if there is a contiguous block of memory starting at start, with length size
+    private boolean hasSpace(int start, int size){
+        for (int i = start; i < start + size; i++) {
+            if(freeMemory[i])
+                return false;
+        }
+        return true;
+    }
+
+    public void segFault(String message){
+        KernelandProcess process = scheduler.getCurrentlyRunning();
+        System.out.printf("<!> Process %s caused a segmentation fault: %s%n", process, message);
+        System.out.printf("    Process %s is being terminated%n", process);
+        process.kill();
+        scheduler.switchProcess();
     }
     
 }

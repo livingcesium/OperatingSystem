@@ -5,20 +5,15 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="e48798e7-0187-4135-b97a-a5514bdecad8" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/.idea/uiDesigner.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/KernelMessage.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Ping.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Pong.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/MemoryTest.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/FileTester.java" beforeDir="false" afterPath="$PROJECT_DIR$/FileTester.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Kernel.java" beforeDir="false" afterPath="$PROJECT_DIR$/Kernel.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/KernelandProcess.java" beforeDir="false" afterPath="$PROJECT_DIR$/KernelandProcess.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Main.java" beforeDir="false" afterPath="$PROJECT_DIR$/Main.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/OS.java" beforeDir="false" afterPath="$PROJECT_DIR$/OS.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/RandomNumber.java" beforeDir="false" afterPath="$PROJECT_DIR$/RandomNumber.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Scheduler.java" beforeDir="false" afterPath="$PROJECT_DIR$/Scheduler.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/VirtualFileSystem.java" beforeDir="false" afterPath="$PROJECT_DIR$/VirtualFileSystem.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/UserlandProcess.java" beforeDir="false" afterPath="$PROJECT_DIR$/UserlandProcess.java" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -37,33 +32,36 @@
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
+  <component name="ProjectColorInfo"><![CDATA[{
+  "associatedIndex": 2
+}]]></component>
   <component name="ProjectId" id="2Ug3x3cKWQ1sG7yl35Q6C4VUT2g" />
   <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "RunOnceActivity.OpenProjectViewOnStart": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "SHARE_PROJECT_CONFIGURATION_FILES": "true",
-    "WebServerToolWindowFactoryState": "false",
-    "git-widget-placeholder": "master",
-    "ignore.virus.scanning.warn.message": "true",
-    "last_opened_file_path": "C:/Users/cesap/Documents/#uni projects/OperatingSystem",
-    "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.tslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "nodejs_package_manager_path": "npm",
-    "project.structure.last.edited": "Project",
-    "project.structure.proportion": "0.15",
-    "project.structure.side.proportion": "0.0",
-    "settings.editor.selected.configurable": "preferences.pluginManager",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
+    &quot;WebServerToolWindowFactoryState&quot;: &quot;false&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
+    &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;C:/Users/cesap/Documents/#uni projects/OperatingSystem&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;project.structure.last.edited&quot;: &quot;Project&quot;,
+    &quot;project.structure.proportion&quot;: &quot;0.15&quot;,
+    &quot;project.structure.side.proportion&quot;: &quot;0.0&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.pluginManager&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
-}]]></component>
+}</component>
   <component name="RecentsManager">
     <key name="CopyClassDialog.RECENTS_KEY">
       <recent name="" />
@@ -98,6 +96,7 @@
       <workItem from="1695563048253" duration="37248000" />
       <workItem from="1697277924291" duration="38611000" />
       <workItem from="1698352103026" duration="15116000" />
+      <workItem from="1699797784373" duration="18879000" />
     </task>
     <servers />
   </component>

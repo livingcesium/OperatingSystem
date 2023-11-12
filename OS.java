@@ -2,13 +2,14 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 
 public class OS {
+    public static final int pageSize = 1024; // in bytes
     private static Kernel kernel;
     
     public static void startup(UserlandProcess init){
         kernel = new Kernel();
         kernel.createProcess(init);
     }
-    
+
     public static void createProcess(UserlandProcess up){
         kernel.createProcess(up);
     }
@@ -34,4 +35,29 @@ public class OS {
         return kernel.awaitMessage();
     }
     
+    public static void GetMapping(int pageNumber){
+        kernel.getMapping(pageNumber);
+    }
+
+    // accepts byte size, converts to page size
+    public static int allocateMemory(int size){
+        if (size % pageSize != 0) {
+            System.out.println("<!> Size not page aligned, failed to allocate memory");
+            return -1;
+        }
+        return kernel.allocateMemory(size/pageSize);
+    }
+
+    // accepts byte size, converts to page size
+    public static boolean freeMemory(int pointer, int size){
+        if (size % pageSize != 0 || pointer % pageSize != 0) {
+            System.out.println("<!> Virtual address and/or size not page aligned, failed to free memory");
+            return false;
+        }
+        return kernel.freeMemory(pointer/pageSize, size/pageSize);
+    }
+
+    public static void segFault(String message){
+        kernel.segFault(message);
+    }
 }

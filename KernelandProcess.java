@@ -1,7 +1,10 @@
 import java.util.Arrays;
 import java.util.LinkedList;
+import java.util.Random;
 
 public class KernelandProcess {
+    public final static int pageBufferSize = 100;
+    private int[] virtualToPhysicalPage = new int[pageBufferSize];
     private String name;
     private static int nextpid = 0;
     private final int pid;
@@ -13,6 +16,7 @@ public class KernelandProcess {
     public static final int MAXDEVICES = 10;
     private final int[] deviceIds = new int[MAXDEVICES];
     private final LinkedList<KernelMessage> kernelMessages = new LinkedList<>();
+    private final UserlandProcess up;
     
     KernelandProcess(UserlandProcess up){
         Arrays.fill(deviceIds, -1);
@@ -20,6 +24,8 @@ public class KernelandProcess {
         thread = new Thread(up, String.format("[Kerneland] Process, PID%d", pid));
         priority = Priority.INTERACTIVE;
         name = up.getClass().getSimpleName();
+        this.up = up;
+        init();
     }
     KernelandProcess(UserlandProcess up, Priority p){
         Arrays.fill(deviceIds, -1);
@@ -27,8 +33,23 @@ public class KernelandProcess {
         thread = new Thread(up, String.format("[Kerneland] Process, PID%d", pid));
         priority = p;
         name = up.getClass().getSimpleName();
+        this.up = up;
+        init();
     }
-    
+
+    private void init(){
+        Arrays.fill(virtualToPhysicalPage, -1);
+    }
+
+    public void getMapping(int pageNumber){
+        int physicalPageNumber = virtualToPhysicalPage[pageNumber];
+
+        if(physicalPageNumber == -1) OS.segFault("Attempted to access virtual address %d, which is outside of this processes memory bounds".formatted(pageNumber));
+        int random = new Random().nextInt(up.getTLB().length);
+        up.getTLB()[random][0] = pageNumber;
+        up.getTLB()[random][1] = physicalPageNumber;
+    }
+
     public void stop(){
         
         
@@ -92,6 +113,27 @@ public class KernelandProcess {
     public Priority getPriority(){ synchronized (priorityLock) {return priority;} }
     public String toString(){
           return String.format("PID%d", pid);
+    }
+
+    public int[] getVirtualToPhysicalPage(){
+        return virtualToPhysicalPage;
+    }
+    public int toPhysicalPage(int virtualPage){
+        return virtualToPhysicalPage[virtualPage];
+    }
+
+    public void removePage(int pageNumber){
+        virtualToPhysicalPage[pageNumber] = -1;
+        up.removeFromTLB(pageNumber);
+    }
+
+    public void resetTLB(){
+        up.resetTLB();
+    }
+
+    public void kill(){
+        started = true; // Catch all, will always kill even if not started
+        thread.stop();
     }
     
 }
