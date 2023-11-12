@@ -44,7 +44,7 @@ public class KernelandProcess {
     public void getMapping(int pageNumber){
         int physicalPageNumber = virtualToPhysicalPage[pageNumber];
 
-        if(physicalPageNumber == -1) OS.segFault("Attempted to access virtual address %d, which is outside of this processes memory bounds".formatted(pageNumber));
+        if(physicalPageNumber == -1) OS.segFault("Attempted to access virtual page %d, which is outside of this processes memory bounds".formatted(pageNumber));
         int random = new Random().nextInt(up.getTLB().length);
         up.getTLB()[random][0] = pageNumber;
         up.getTLB()[random][1] = physicalPageNumber;
