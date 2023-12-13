@@ -1,10 +1,11 @@
+import java.io.FileNotFoundException;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.Random;
 
 public class KernelandProcess {
     public final static int pageBufferSize = 100;
-    private int[] virtualToPhysicalPage = new int[pageBufferSize];
+    private VirtualToPhysicalMapping[] virtualToPhysicalPage = new VirtualToPhysicalMapping[pageBufferSize];
     private String name;
     private static int nextpid = 0;
     private final int pid;
@@ -17,8 +18,10 @@ public class KernelandProcess {
     private final int[] deviceIds = new int[MAXDEVICES];
     private final LinkedList<KernelMessage> kernelMessages = new LinkedList<>();
     private final UserlandProcess up;
+    private final Scheduler scheduler;
     
-    KernelandProcess(UserlandProcess up){
+    KernelandProcess(UserlandProcess up, Scheduler scheduler){
+        this.scheduler = scheduler;
         Arrays.fill(deviceIds, -1);
         pid = nextpid++;
         thread = new Thread(up, String.format("[Kerneland] Process, PID%d", pid));
@@ -27,7 +30,8 @@ public class KernelandProcess {
         this.up = up;
         init();
     }
-    KernelandProcess(UserlandProcess up, Priority p){
+    KernelandProcess(UserlandProcess up, Priority p, Scheduler scheduler){
+        this.scheduler = scheduler;
         Arrays.fill(deviceIds, -1);
         pid = nextpid++;
         thread = new Thread(up, String.format("[Kerneland] Process, PID%d", pid));
@@ -38,16 +42,70 @@ public class KernelandProcess {
     }
 
     private void init(){
-        Arrays.fill(virtualToPhysicalPage, -1);
+        // From a bygone era
     }
 
     public void getMapping(int pageNumber){
-        int physicalPageNumber = virtualToPhysicalPage[pageNumber];
-
-        if(physicalPageNumber == -1) OS.segFault("Attempted to access virtual page %d, which is outside of this processes memory bounds".formatted(pageNumber));
+        if(virtualToPhysicalPage[pageNumber] == null)
+            OS.segFault("Attempted to access virtual address %d, which is outside of this processes memory bounds".formatted(pageNumber * OS.pageSize));
+        
+        int physicalPageNumber = virtualToPhysicalPage[pageNumber].physicalPageNumber;
+        
+        if(physicalPageNumber == -1){
+            // Allocate a new (maybe stolen) physical page
+            int nextPage = OS.nextFreePhysicalPage();
+            if (nextPage != -1)
+                virtualToPhysicalPage[pageNumber].physicalPageNumber = nextPage;
+            else{
+                // Page swap
+                KernelandProcess randomProcess;
+                int takenPhysicalPage = -1;
+                int pageFileFD;
+                int outOfMemoryFuse = Integer.MAX_VALUE;
+                while(takenPhysicalPage == -1 && outOfMemoryFuse != 0){
+                    randomProcess = scheduler.getRandomProcess();
+                    for(VirtualToPhysicalMapping mapping : randomProcess.virtualToPhysicalPage){
+                        ///
+                        if(mapping != null && (takenPhysicalPage = mapping.physicalPageNumber) != -1){
+                            mapping.physicalPageNumber = -1;
+                            if(mapping.diskPageNumber == -1)
+                                mapping.diskPageNumber = OS.pageFileEnd++;
+                            try{
+                                pageFileFD = OS.open("file swap.page");
+                                OS.seek(pageFileFD, mapping.diskPageNumber * OS.pageSize);
+                                OS.write(pageFileFD, Arrays.copyOfRange(UserlandProcess.memory, takenPhysicalPage * OS.pageSize, takenPhysicalPage * OS.pageSize + OS.pageSize));
+                            } catch (Exception e) {
+                                throw new RuntimeException("Broken page file, got exception: \n", e);
+                            }
+                            virtualToPhysicalPage[pageNumber].physicalPageNumber = takenPhysicalPage;
+                            break;
+                        } else
+                            outOfMemoryFuse--;
+                    }
+                }
+                if(outOfMemoryFuse == 0)
+                    OS.segFault("Out of memory");
+            }
+            
+            // If there is data on the page file, load it
+            if(virtualToPhysicalPage[pageNumber].diskPageNumber != -1){
+                int pageFileFD;
+                try{
+                    pageFileFD = OS.open("file swap.page");
+                    OS.seek(pageFileFD, virtualToPhysicalPage[pageNumber].diskPageNumber * OS.pageSize);
+                    System.arraycopy(OS.read(pageFileFD, OS.pageSize), 0, UserlandProcess.memory, virtualToPhysicalPage[pageNumber].physicalPageNumber * OS.pageSize, OS.pageSize);
+                } catch (Exception e) {
+                    throw new RuntimeException("Broken page file, got exception: \n", e);
+                }
+            } else
+                // Zero out the page
+                Arrays.fill(UserlandProcess.memory, virtualToPhysicalPage[pageNumber].physicalPageNumber * OS.pageSize, virtualToPhysicalPage[pageNumber].physicalPageNumber * OS.pageSize + OS.pageSize, (byte) 0);
+        }
+        
+        
         int random = new Random().nextInt(up.getTLB().length);
         up.getTLB()[random][0] = pageNumber;
-        up.getTLB()[random][1] = physicalPageNumber;
+        up.getTLB()[random][1] = virtualToPhysicalPage[pageNumber].physicalPageNumber;
     }
 
     public void stop(){
@@ -115,15 +173,18 @@ public class KernelandProcess {
           return String.format("PID%d", pid);
     }
 
-    public int[] getVirtualToPhysicalPage(){
+    public VirtualToPhysicalMapping[] getVirtualToPhysicalPage(){
         return virtualToPhysicalPage;
     }
+    public boolean hasPage(int pageNumber){
+        return virtualToPhysicalPage[pageNumber] != null;
+    }
     public int toPhysicalPage(int virtualPage){
-        return virtualToPhysicalPage[virtualPage];
+        return virtualToPhysicalPage[virtualPage].physicalPageNumber;
     }
 
     public void removePage(int pageNumber){
-        virtualToPhysicalPage[pageNumber] = -1;
+        virtualToPhysicalPage[pageNumber] = null;
         up.removeFromTLB(pageNumber);
     }
 

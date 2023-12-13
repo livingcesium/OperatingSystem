@@ -36,7 +36,7 @@ public abstract class UserlandProcess implements Runnable{
 
     private int getPhysicalAddress(int virtualAddress){
         int pageNumber = virtualAddress / OS.pageSize;
-        if(virtualAddress >= OS.pageSize) OS.segFault("Attempted to access virtual address %d, which is outside of this processes memory bounds".formatted(virtualAddress));
+        //if(virtualAddress >= OS.pageSize) OS.segFault("Attempted to access virtual address %d, which is outside of this processes memory bounds".formatted(virtualAddress));
         int offset = virtualAddress % OS.pageSize;
         int physicalPage = -1;
         int attempts = 0;
@@ -55,9 +55,11 @@ public abstract class UserlandProcess implements Runnable{
             }
         }
 
-        if (physicalPage < 0) throw new RuntimeException("Physical page not found after %d attempts".formatted(attempts));
+        if (physicalPage < 0) 
+            throw new RuntimeException("Physical page not found after %d attempts".formatted(attempts));
         int physicalAddress = physicalPage * OS.pageSize + offset;
         if(physicalAddress >= memory.length) OS.segFault("Attempted to access physical address %d, which is outside of system memory bounds".formatted(physicalAddress));
+        
         return physicalAddress;
     }
 }

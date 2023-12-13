@@ -77,7 +77,7 @@ public class Scheduler {
     }
     
     public int createProcess(UserlandProcess up){
-        KernelandProcess kernelProcess = new KernelandProcess(up);
+        KernelandProcess kernelProcess = new KernelandProcess(up, this);
         addToQueue(kernelProcess, false);
         processes.put(kernelProcess.getPid(), kernelProcess);
         synchronized (currentProcessLock) {
@@ -89,7 +89,7 @@ public class Scheduler {
     }
     
     public int createProcess(UserlandProcess up, Priority priority){
-        KernelandProcess kernelProcess = new KernelandProcess(up, priority);
+        KernelandProcess kernelProcess = new KernelandProcess(up, priority, this);
         addToQueue(kernelProcess, false);
         processes.put(kernelProcess.getPid(), kernelProcess);
         
@@ -144,11 +144,13 @@ public class Scheduler {
             addToQueue(currentProcess, false);
         } else {
             // Free memory if it was allocated, throw exception if this somehow fails
-            int[] virtualToPhysicalPage = currentProcess.getVirtualToPhysicalPage();
-            for (int physicalPage : virtualToPhysicalPage) {
-                if (physicalPage != -1 && !kernel.freeMemory(physicalPage, 1))
+            VirtualToPhysicalMapping[] virtualToPhysicalPage = currentProcess.getVirtualToPhysicalPage();
+            int i = 0;
+            for (VirtualToPhysicalMapping mapping : virtualToPhysicalPage) {
+                if (mapping != null && !kernel.freeMemory(mapping.physicalPageNumber, 1))
                     throw new RuntimeException("Failed to free memory while killing process %s".formatted(currentProcess));
             }
+            
         }
         currentProcess.stop();
         if(Debug.flag)
@@ -189,11 +191,14 @@ public class Scheduler {
             switchProcess();
         }
         
-        sleepingProcesses.add(new SleepingProcess(temp, timeToFinish));
-        
-        if(Debug.flag)
-            System.out.printf("\tProcess PID%d sleeping for %d milliseconds, %s%n", temp.getPid(), milliseconds, sleepingProcesses);
+        synchronized (sleepingProcesses) {
+            sleepingProcesses.add(new SleepingProcess(temp, timeToFinish));
+
+            if (Debug.flag)
+                System.out.printf("\tProcess PID%d sleeping for %d milliseconds, %s%n", temp.getPid(), milliseconds, sleepingProcesses);
+        }
         temp.stop();
+        
     }
     private void addToQueue(KernelandProcess process, boolean first){
         List<KernelandProcess> output;
@@ -343,6 +348,16 @@ public class Scheduler {
         synchronized (currentProcessLock) {
             return currentProcess;
         }
+    }
+    
+    public KernelandProcess getRandomProcess(){
+        int i = rand.nextInt(processes.size());
+        for(Map.Entry<Integer, KernelandProcess> entry : processes.entrySet()){
+            if(i == 0)
+                return entry.getValue();
+            i--;
+        }
+        throw new ProcessNotFoundException("No processes to pick from");
     }
     
     public String reportCurrentProcess(){

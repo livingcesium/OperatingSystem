@@ -122,33 +122,39 @@ public class Kernel implements Device{
 
     public int allocateMemory(int size){
         KernelandProcess process = scheduler.getCurrentlyRunning();
-        int[] virtualToPhysicalPage = process.getVirtualToPhysicalPage();
-        int virtualPageNumber;
-        for (int i = 0; i < freeMemory.length; i++) {
-            if(hasSpace(i, size)){
-                for (int j = i; j < i + size; j++) {
-                    UserlandProcess.memory[j] = 0;
-                    freeMemory[j] = true;
+        VirtualToPhysicalMapping[] virtualToPhysicalPage = process.getVirtualToPhysicalPage();
+        int virtualPageNumber = 0;
+        virtualPageNumber = -1;
+        
+        for (int allocated = 0; allocated < size; allocated++) {
+            if(virtualToPhysicalPage[++virtualPageNumber] == null)
+                virtualToPhysicalPage[virtualPageNumber] = new VirtualToPhysicalMapping();
+
+            if(hasSpace(allocated, size)){
+                int last = 0;
+                for (int i = allocated; i < allocated + size; i++)
+                    freeMemory[i] = true;
+                for (int i = allocated * OS.pageSize; i < (allocated + size) * OS.pageSize ; i++) {
+                    UserlandProcess.memory[i] = 0;
+                    last = i;
                 }
-                // Add physical page to process' mapping
-                for (virtualPageNumber = 0; virtualPageNumber < virtualToPhysicalPage.length; virtualPageNumber++) {
-                    if(virtualToPhysicalPage[virtualPageNumber] == -1){
-                        virtualToPhysicalPage[virtualPageNumber] = i;
-                        break;
-                    }
-                }
-                return virtualPageNumber;
+                System.out.println(last + 1);
+                virtualToPhysicalPage[virtualPageNumber].physicalPageNumber = allocated;
             }
         }
-        return -1; // Fail if no empty space found
+        
+        return virtualPageNumber; // If no space is found, memory is allocated but not mapped (a page file will be created)
     }
 
     public boolean freeMemory(int virtualPageNumber, int size){
         KernelandProcess process = scheduler.getCurrentlyRunning();
-        if(process.toPhysicalPage(virtualPageNumber) == -1)
+        if(!process.hasPage(virtualPageNumber))
             return false;
+        int physicalPage;
         for (int i = virtualPageNumber; i < virtualPageNumber + size; i++) {
-            freeMemory[process.toPhysicalPage(i)] = false;
+            if((physicalPage = process.toPhysicalPage(i)) != -1)
+                freeMemory[physicalPage] = false;
+            
             process.removePage(i);
         }
         return true;
@@ -161,6 +167,14 @@ public class Kernel implements Device{
                 return false;
         }
         return true;
+    }
+    
+    public int nextFreePhysicalPage(){
+        for (int i = 0; i < freeMemory.length; i++) {
+            if(!freeMemory[i])
+                return i;
+        }
+        return -1;
     }
 
     public void segFault(String message){

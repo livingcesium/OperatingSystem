@@ -4,10 +4,16 @@ import java.io.IOException;
 public class OS {
     public static final int pageSize = 1024; // in bytes
     private static Kernel kernel;
+    public static int pageFileEnd = 0; // TODO: part 6 first para, why is this here?
     
     public static void startup(UserlandProcess init){
         kernel = new Kernel();
         kernel.createProcess(init);
+        try {
+            open("file swap.page");
+        } catch (FileNotFoundException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public static void createProcess(UserlandProcess up){
@@ -56,7 +62,9 @@ public class OS {
         }
         return kernel.freeMemory(pointer/pageSize, size/pageSize);
     }
-
+    public static int nextFreePhysicalPage(){
+        return kernel.nextFreePhysicalPage();
+    }
     public static void segFault(String message){
         kernel.segFault(message);
     }
